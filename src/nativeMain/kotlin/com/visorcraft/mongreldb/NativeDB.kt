@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+
 package com.visorcraft.mongreldb
 
 import com.visorcraft.mongreldb.native.mongreldb_kit_database_t
@@ -75,8 +77,10 @@ class NativeDB private constructor(
         }
 
         /** Get the last FFI error message. */
-        fun lastError(): String =
-            mongreldb_kit_last_error()?.toKString() ?: "(null)"
+        fun lastError(): String {
+            val ptr = mongreldb_kit_last_error()
+            return ptr?.toKString() ?: "(null)"
+        }
     }
 
     /**
