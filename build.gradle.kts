@@ -103,7 +103,7 @@ kotlin {
     // All targets compile as a klib (library). No executable by default.
     targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget> {
         binaries.all {
-            freeCompilerArgs += "-Xallocator=standard"
+            freeCompilerArgs += "-Xallocator=std"
         }
     }
 }
