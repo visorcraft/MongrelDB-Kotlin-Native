@@ -22,15 +22,13 @@ import com.visorcraft.mongreldb.native.mongreldb_kit_query_delete_json
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.CPointerVar
-import kotlinx.cinterop.StableRef
+import kotlinx.cinterop.ULongVar
+import kotlinx.cinterop.UByteVar
 import kotlinx.cinterop.alloc
-import kotlinx.cinterop.cstr
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.readBytes
 import kotlinx.cinterop.toKString
-import kotlinx.cinterop.toKStringFromUtf8
-import kotlinx.cinterop.value
 
 /**
  * Native embedded MongrelDB database (Tier 1).
@@ -42,8 +40,6 @@ import kotlinx.cinterop.value
  *
  * **Thread safety:** uses `Rc<RefCell>` internally (single-threaded). Create
  * one [NativeDB] per worker. Do not share across threads.
- *
- * @param db the opaque FFI handle. Obtain via [open] or [create].
  */
 class NativeDB private constructor(
     private val db: CPointer<mongreldb_kit_database_t>,
@@ -52,18 +48,14 @@ class NativeDB private constructor(
     companion object {
         /** Open an existing Kit database at [path]. */
         fun open(path: String): NativeDB {
-            val handle = memScoped {
-                mongreldb_kit_open(path.cstr.ptr)
-            }
+            val handle = mongreldb_kit_open(path)
             checkNotNull(handle) { "mongreldb_kit_open failed: ${lastError()}" }
             return NativeDB(handle)
         }
 
         /** Create a fresh Kit database at [path] with a JSON [schema]. */
         fun create(path: String, schema: String): NativeDB {
-            val handle = memScoped {
-                mongreldb_kit_create(path.cstr.ptr, schema.cstr.ptr)
-            }
+            val handle = mongreldb_kit_create(path, schema)
             checkNotNull(handle) { "mongreldb_kit_create failed: ${lastError()}" }
             return NativeDB(handle)
         }
@@ -89,7 +81,7 @@ class NativeDB private constructor(
      */
     fun sqlRows(sql: String): String = memScoped {
         val outJson = alloc<CPointerVar<ByteVar>>()
-        val rc = mongreldb_kit_sql_rows(db, sql.cstr.ptr, outJson.ptr)
+        val rc = mongreldb_kit_sql_rows(db, sql, outJson.ptr)
         checkRc(rc, "sqlRows")
         val result = outJson.value?.toKString() ?: "[]"
         mongreldb_kit_free_json(outJson.value)
@@ -101,9 +93,9 @@ class NativeDB private constructor(
      * For DDL/DML the result is an empty byte array.
      */
     fun sqlArrow(sql: String): ByteArray = memScoped {
-        val outBuf = alloc<CPointerVar<ByteVar>>()
+        val outBuf = alloc<CPointerVar<UByteVar>>()
         val outLen = alloc<ULongVar>()
-        val rc = mongreldb_kit_sql_arrow(db, sql.cstr.ptr, outBuf.ptr, outLen.ptr)
+        val rc = mongreldb_kit_sql_arrow(db, sql, outBuf.ptr, outLen.ptr)
         checkRc(rc, "sqlArrow")
         val len = outLen.value.toInt()
         val result = if (len > 0) outBuf.value!!.readBytes(len) else ByteArray(0)
@@ -112,8 +104,8 @@ class NativeDB private constructor(
     }
 
     /** Run the Kit migration runner from a JSON array of migrations. */
-    fun migrate(migrationsJson: String) = memScoped {
-        val rc = mongreldb_kit_migrate_json(db, migrationsJson.cstr.ptr)
+    fun migrate(migrationsJson: String) {
+        val rc = mongreldb_kit_migrate_json(db, migrationsJson)
         checkRc(rc, "migrate")
     }
 
@@ -130,7 +122,7 @@ class NativeDB private constructor(
     /** Run a SELECT query (JSON Kit query AST) and return JSON rows. */
     fun querySelect(queryJson: String): String = memScoped {
         val outJson = alloc<CPointerVar<ByteVar>>()
-        val rc = mongreldb_kit_query_select_json(db, queryJson.cstr.ptr, outJson.ptr)
+        val rc = mongreldb_kit_query_select_json(db, queryJson, outJson.ptr)
         checkRc(rc, "querySelect")
         val result = outJson.value?.toKString() ?: "[]"
         mongreldb_kit_free_json(outJson.value)
@@ -140,7 +132,7 @@ class NativeDB private constructor(
     /** Run an INSERT query (JSON Kit query AST) and return JSON returning values. */
     fun queryInsert(queryJson: String): String = memScoped {
         val outJson = alloc<CPointerVar<ByteVar>>()
-        val rc = mongreldb_kit_query_insert_json(db, queryJson.cstr.ptr, outJson.ptr)
+        val rc = mongreldb_kit_query_insert_json(db, queryJson, outJson.ptr)
         checkRc(rc, "queryInsert")
         val result = outJson.value?.toKString() ?: "[]"
         mongreldb_kit_free_json(outJson.value)
@@ -150,7 +142,7 @@ class NativeDB private constructor(
     /** Run an UPDATE query (JSON Kit query AST) and return JSON returning values. */
     fun queryUpdate(queryJson: String): String = memScoped {
         val outJson = alloc<CPointerVar<ByteVar>>()
-        val rc = mongreldb_kit_query_update_json(db, queryJson.cstr.ptr, outJson.ptr)
+        val rc = mongreldb_kit_query_update_json(db, queryJson, outJson.ptr)
         checkRc(rc, "queryUpdate")
         val result = outJson.value?.toKString() ?: "[]"
         mongreldb_kit_free_json(outJson.value)
@@ -160,7 +152,7 @@ class NativeDB private constructor(
     /** Run an UPSERT query (JSON Kit query AST) and return JSON returning values. */
     fun queryUpsert(queryJson: String): String = memScoped {
         val outJson = alloc<CPointerVar<ByteVar>>()
-        val rc = mongreldb_kit_query_upsert_json(db, queryJson.cstr.ptr, outJson.ptr)
+        val rc = mongreldb_kit_query_upsert_json(db, queryJson, outJson.ptr)
         checkRc(rc, "queryUpsert")
         val result = outJson.value?.toKString() ?: "[]"
         mongreldb_kit_free_json(outJson.value)
@@ -170,7 +162,7 @@ class NativeDB private constructor(
     /** Run a DELETE query (JSON Kit query AST) and return JSON returning values. */
     fun queryDelete(queryJson: String): String = memScoped {
         val outJson = alloc<CPointerVar<ByteVar>>()
-        val rc = mongreldb_kit_query_delete_json(db, queryJson.cstr.ptr, outJson.ptr)
+        val rc = mongreldb_kit_query_delete_json(db, queryJson, outJson.ptr)
         checkRc(rc, "queryDelete")
         val result = outJson.value?.toKString() ?: "[]"
         mongreldb_kit_free_json(outJson.value)
