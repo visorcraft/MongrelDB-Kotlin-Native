@@ -83,8 +83,8 @@ class NativeDB private constructor(
         val outJson = alloc<CPointerVar<ByteVar>>()
         val rc = mongreldb_kit_sql_rows(db, sql, outJson.ptr)
         checkRc(rc, "sqlRows")
-        val result = outJson.value?.toKString() ?: "[]"
-        mongreldb_kit_free_json(outJson.value)
+        val result = outJson.pointed.value?.toKString() ?: "[]"
+        mongreldb_kit_free_json(outJson.pointed.value)
         result
     }
 
@@ -97,9 +97,9 @@ class NativeDB private constructor(
         val outLen = alloc<ULongVar>()
         val rc = mongreldb_kit_sql_arrow(db, sql, outBuf.ptr, outLen.ptr)
         checkRc(rc, "sqlArrow")
-        val len = outLen.value.toInt()
-        val result = if (len > 0) outBuf.value!!.readBytes(len) else ByteArray(0)
-        mongreldb_kit_free_arrow(outBuf.value, outLen.value)
+        val len = outLen.pointed.value.toInt()
+        val result = if (len > 0) outBuf.pointed.value!!.readBytes(len) else ByteArray(0)
+        mongreldb_kit_free_arrow(outBuf.pointed.value, outLen.pointed.value)
         result
     }
 
@@ -114,8 +114,8 @@ class NativeDB private constructor(
         val outJson = alloc<CPointerVar<ByteVar>>()
         val rc = mongreldb_kit_applied_migrations_json(db, outJson.ptr)
         checkRc(rc, "appliedMigrations")
-        val result = outJson.value?.toKString() ?: "[]"
-        mongreldb_kit_free_json(outJson.value)
+        val result = outJson.pointed.value?.toKString() ?: "[]"
+        mongreldb_kit_free_json(outJson.pointed.value)
         result
     }
 
@@ -124,8 +124,8 @@ class NativeDB private constructor(
         val outJson = alloc<CPointerVar<ByteVar>>()
         val rc = mongreldb_kit_query_select_json(db, queryJson, outJson.ptr)
         checkRc(rc, "querySelect")
-        val result = outJson.value?.toKString() ?: "[]"
-        mongreldb_kit_free_json(outJson.value)
+        val result = outJson.pointed.value?.toKString() ?: "[]"
+        mongreldb_kit_free_json(outJson.pointed.value)
         result
     }
 
@@ -134,8 +134,8 @@ class NativeDB private constructor(
         val outJson = alloc<CPointerVar<ByteVar>>()
         val rc = mongreldb_kit_query_insert_json(db, queryJson, outJson.ptr)
         checkRc(rc, "queryInsert")
-        val result = outJson.value?.toKString() ?: "[]"
-        mongreldb_kit_free_json(outJson.value)
+        val result = outJson.pointed.value?.toKString() ?: "[]"
+        mongreldb_kit_free_json(outJson.pointed.value)
         result
     }
 
@@ -144,8 +144,8 @@ class NativeDB private constructor(
         val outJson = alloc<CPointerVar<ByteVar>>()
         val rc = mongreldb_kit_query_update_json(db, queryJson, outJson.ptr)
         checkRc(rc, "queryUpdate")
-        val result = outJson.value?.toKString() ?: "[]"
-        mongreldb_kit_free_json(outJson.value)
+        val result = outJson.pointed.value?.toKString() ?: "[]"
+        mongreldb_kit_free_json(outJson.pointed.value)
         result
     }
 
@@ -154,8 +154,8 @@ class NativeDB private constructor(
         val outJson = alloc<CPointerVar<ByteVar>>()
         val rc = mongreldb_kit_query_upsert_json(db, queryJson, outJson.ptr)
         checkRc(rc, "queryUpsert")
-        val result = outJson.value?.toKString() ?: "[]"
-        mongreldb_kit_free_json(outJson.value)
+        val result = outJson.pointed.value?.toKString() ?: "[]"
+        mongreldb_kit_free_json(outJson.pointed.value)
         result
     }
 
@@ -164,8 +164,8 @@ class NativeDB private constructor(
         val outJson = alloc<CPointerVar<ByteVar>>()
         val rc = mongreldb_kit_query_delete_json(db, queryJson, outJson.ptr)
         checkRc(rc, "queryDelete")
-        val result = outJson.value?.toKString() ?: "[]"
-        mongreldb_kit_free_json(outJson.value)
+        val result = outJson.pointed.value?.toKString() ?: "[]"
+        mongreldb_kit_free_json(outJson.pointed.value)
         result
     }
 
