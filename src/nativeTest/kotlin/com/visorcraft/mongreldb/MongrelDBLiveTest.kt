@@ -45,7 +45,7 @@ class MongrelDBLiveTest {
     @Test
     fun testCreateTableAndCount() {
         val client = skipIfNoDaemon()
-        val table = "kn_test_${System.currentTimeMillis()}"
+        val table = "kn_test_${currentTimeMillis()}"
         client.createTable(table, listOf(
             Column.int64("id", 1, primaryKey = true),
             Column.text("name", 2),
@@ -60,7 +60,7 @@ class MongrelDBLiveTest {
     @Test
     fun testPutAndCount() {
         val client = skipIfNoDaemon()
-        val table = "kn_put_${System.currentTimeMillis()}"
+        val table = "kn_put_${currentTimeMillis()}"
         client.createTable(table, listOf(
             Column.int64("id", 1, primaryKey = true),
             Column.text("name", 2),
@@ -79,7 +79,7 @@ class MongrelDBLiveTest {
     @Test
     fun testUpsert() {
         val client = skipIfNoDaemon()
-        val table = "kn_upsert_${System.currentTimeMillis()}"
+        val table = "kn_upsert_${currentTimeMillis()}"
         client.createTable(table, listOf(
             Column.int64("id", 1, primaryKey = true),
             Column.text("name", 2),
@@ -105,7 +105,7 @@ class MongrelDBLiveTest {
     @Test
     fun testSql() {
         val client = skipIfNoDaemon()
-        val table = "kn_sql_${System.currentTimeMillis()}"
+        val table = "kn_sql_${currentTimeMillis()}"
         client.createTable(table, listOf(
             Column.int64("id", 1, primaryKey = true),
             Column.text("name", 2),
@@ -125,7 +125,7 @@ class MongrelDBLiveTest {
     @Test
     fun testQueryByPk() {
         val client = skipIfNoDaemon()
-        val table = "kn_pk_${System.currentTimeMillis()}"
+        val table = "kn_pk_${currentTimeMillis()}"
         client.createTable(table, listOf(
             Column.int64("id", 1, primaryKey = true),
             Column.text("name", 2),
@@ -148,7 +148,7 @@ class MongrelDBLiveTest {
     @Test
     fun testTableNames() {
         val client = skipIfNoDaemon()
-        val table = "kn_names_${System.currentTimeMillis()}"
+        val table = "kn_names_${currentTimeMillis()}"
         client.createTable(table, listOf(Column.int64("id", 1, primaryKey = true)))
         try {
             val names = client.tableNames()
@@ -161,7 +161,7 @@ class MongrelDBLiveTest {
     @Test
     fun testDeleteByPk() {
         val client = skipIfNoDaemon()
-        val table = "kn_del_${System.currentTimeMillis()}"
+        val table = "kn_del_${currentTimeMillis()}"
         client.createTable(table, listOf(
             Column.int64("id", 1, primaryKey = true),
         ))
@@ -178,7 +178,7 @@ class MongrelDBLiveTest {
     @Test
     fun testTransactionCommit() {
         val client = skipIfNoDaemon()
-        val table = "kn_txn_${System.currentTimeMillis()}"
+        val table = "kn_txn_${currentTimeMillis()}"
         client.createTable(table, listOf(
             Column.int64("id", 1, primaryKey = true),
             Column.text("name", 2),
@@ -204,8 +204,14 @@ class MongrelDBLiveTest {
 /** Thrown to signal that a test was skipped (no daemon available). */
 class TestSkippedException : RuntimeException("test skipped")
 
+/** Thrown to signal that a test was skipped (no daemon available). */
+class TestSkippedException : RuntimeException("test skipped")
+
 /** Minimal getenv for Kotlin/Native (platform.posix). */
+@OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
 private fun getenv(name: String): String? =
-    platform.posix.getenv(name)?.let {
-        kotlinx.cinterop.toKString(it)
-    }
+    platform.posix.getenv(name)?.toKString()
+
+/** Milliseconds since the Unix epoch, for generating unique table names. */
+private fun currentTimeMillis(): Long =
+    kotlinx.datetime.Clock.System.now().toEpochMilliseconds()

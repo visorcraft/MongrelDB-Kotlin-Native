@@ -66,6 +66,9 @@ kotlin {
 
         val nativeTest by creating {
             dependsOn(commonTest)
+            dependencies {
+                implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.2")
+            }
         }
 
         // Wire each target's main/test source sets to the shared native ones.
