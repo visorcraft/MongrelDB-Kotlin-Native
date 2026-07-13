@@ -12,7 +12,7 @@ package com.visorcraft.mongreldb
  */
 open class MongrelDBException : RuntimeException {
     constructor(message: String) : super(message)
-    constructor(message: String, cause: Throwable) : super(message, cause)
+    constructor(message: String, cause: Throwable?) : super(message, cause)
 }
 
 /** Authentication or authorization failure (HTTP 401 or 403). */

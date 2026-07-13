@@ -4,6 +4,7 @@ package com.visorcraft.mongreldb
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.curl.Curl
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -16,6 +17,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import io.ktor.http.url
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -33,7 +35,6 @@ import kotlinx.serialization.json.longOrNull
 internal class HttpTransport(
     private val baseUrl: String,
     private val authHeader: Pair<String, String>? = null,
-    timeoutSeconds: Long = 30L,
 ) : AutoCloseable {
 
     val json = Json {
@@ -97,7 +98,7 @@ internal class HttpTransport(
     private fun fullUrl(path: String): String =
         baseUrl.trimEnd('/') + if (path.startsWith('/')) path else "/$path"
 
-    private fun handleResponse(response: HttpResponse): String {
+    private suspend fun handleResponse(response: HttpResponse): String {
         val body = response.bodyAsText()
         val status = response.status
         if (status.isSuccess()) return body
@@ -139,6 +140,3 @@ internal class HttpTransport(
         client.close()
     }
 }
-
-// Type alias to bridge ktor's HttpRequestBuilder import.
-private typealias HttpRequestBuilder = io.ktor.client.request.HttpRequestBuilder
