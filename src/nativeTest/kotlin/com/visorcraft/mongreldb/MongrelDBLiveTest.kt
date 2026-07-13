@@ -2,6 +2,7 @@
 package com.visorcraft.mongreldb
 
 import kotlinx.serialization.json.Json
+import kotlinx.cinterop.toKString
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -207,7 +208,7 @@ class TestSkippedException : RuntimeException("test skipped")
 /** Minimal getenv for Kotlin/Native (platform.posix). */
 @OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
 private fun getenv(name: String): String? =
-    platform.posix.getenv(name)?.let { kotlinx.cinterop.toKString(it) }
+    platform.posix.getenv(name)?.toKString()
 
 /** Milliseconds since the Unix epoch, for generating unique table names. */
 private fun currentTimeMillis(): Long =
