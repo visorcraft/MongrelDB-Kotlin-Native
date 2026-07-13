@@ -1,0 +1,19 @@
+// cinterop definition for the MongrelDB Kit C ABI.
+//
+// Generates Kotlin bindings for the functions declared in mongreldb_kit.h.
+// The header is a verbatim copy from the mongreldb-ffi crate (released as
+// part of mongreldb-kit-native-* archives on the MongrelDB GitHub releases).
+//
+// At link time, the native libraries (libmongreldb_kit + libmongreldb) must
+// be on the linker search path. Set MONGRELDB_NATIVE_DIR or place them in a
+// standard location (/usr/local/lib, etc.). For CI, the workflow downloads
+// the prebuilt archives and sets the library path.
+
+headers = mongreldb_kit.h
+headerFilter = mongreldb_kit.h
+
+// Linker flags: search for libmongreldb_kit and libmongreldb.
+// The actual paths are resolved at build time via the linker's search path.
+linkerOpts.linux = -lmongreldb_kit -lmongreldb
+linkerOpts.macos = -lmongreldb_kit -lmongreldb
+linkerOpts.mingw = mongreldb_kit.lib mongreldb.lib

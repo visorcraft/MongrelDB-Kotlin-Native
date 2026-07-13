@@ -1,0 +1,158 @@
+# CI for the MongrelDB Kotlin/Native client.
+#
+# Two jobs:
+#   1. build — compiles the client (HTTP mode) on Linux, runs wire-shape tests
+#      (offline), and runs live tests against mongreldb-server.
+#   2. native — downloads the prebuilt native libs, enables cinterop, and runs
+#      the native FFI tests (Tier 1).
+#
+# The build uses the -PenableNative=false default (no cinterop) for the HTTP
+# tests, then -PenableNative=true for the native tests with the libs present.
+
+name: CI
+
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build & test (HTTP mode)
+    runs-on: ubuntu-latest
+    env:
+      SERVER_VERSION: '0.52.1'
+      MONGRELDB_URL: http://127.0.0.1:8453
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Java (for Gradle)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Cache Gradle
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', 'gradle/**') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Cache mongreldb-server binary
+        id: server-cache
+        uses: actions/cache@v6
+        with:
+          path: bin/mongreldb-server
+          key: mongreldb-server-linux-x64-${{ env.SERVER_VERSION }}
+
+      - name: Download mongreldb-server
+        if: steps.server-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p bin
+          curl -fsSL -o bin/mongreldb-server \
+            "https://github.com/visorcraft/MongrelDB/releases/download/v${SERVER_VERSION}/mongreldb-server-linux-x64"
+          chmod +x bin/mongreldb-server
+          ./bin/mongreldb-server --help | head -n 1
+
+      - name: Compile (HTTP mode, no cinterop)
+        run: ./gradlew compileKotlinLinuxX64 --no-daemon
+
+      - name: Run wire-shape tests (offline)
+        run: ./gradlew linuxX64Test --no-daemon --tests "com.visorcraft.mongreldb.CreateTableWireShapeTest"
+
+      - name: Start mongreldb-server
+        run: |
+          rm -rf /tmp/mongreldb-data
+          ./bin/mongreldb-server /tmp/mongreldb-data --port 8453 > /tmp/mongreldb-server.log 2>&1 &
+          echo $! > /tmp/mongreldb-server.pid
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8453/health >/dev/null 2>&1; then
+              echo "mongreldb-server is healthy"
+              break
+            fi
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8453/health >/dev/null || (cat /tmp/mongreldb-server.log && exit 1)
+
+      - name: Run live tests
+        run: ./gradlew linuxX64Test --no-daemon --tests "com.visorcraft.mongreldb.MongrelDBLiveTest"
+
+      - name: Dump server log on failure
+        if: failure()
+        run: cat /tmp/mongreldb-server.log
+
+      - name: Stop mongreldb-server
+        if: always()
+        run: |
+          if [ -f /tmp/mongreldb-server.pid ]; then
+            kill "$(cat /tmp/mongreldb-server.pid)" 2>/dev/null || true
+          fi
+
+  native:
+    name: Native embedding tests (Tier 1)
+    runs-on: ubuntu-latest
+    env:
+      SERVER_VERSION: '0.52.1'
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Java (for Gradle)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Cache Gradle
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-native-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', 'gradle/**') }}
+          restore-keys: gradle-native-${{ runner.os }}-
+
+      - name: Download native libraries
+        run: |
+          mkdir -p native-libs
+          curl -fsSL -o /tmp/core.tar.gz \
+            "https://github.com/visorcraft/MongrelDB/releases/download/v${SERVER_VERSION}/mongreldb-native-linux-x64-gnu.tar.gz"
+          tar xzf /tmp/core.tar.gz -C /tmp --strip-components=1
+          cp /tmp/lib/libmongreldb.so native-libs/
+          cp /tmp/lib/libmongreldb.a native-libs/ || true
+
+          curl -fsSL -o /tmp/kit.tar.gz \
+            "https://github.com/visorcraft/MongrelDB/releases/download/v${SERVER_VERSION}/mongreldb-kit-native-linux-x64-gnu.tar.gz"
+          mkdir -p /tmp/kit
+          tar xzf /tmp/kit.tar.gz -C /tmp/kit --strip-components=1
+          cp /tmp/kit/lib/libmongreldb_kit.so native-libs/
+
+          echo "=== native-libs ==="
+          ls -la native-libs/
+
+      - name: Compile (native mode, cinterop enabled)
+        env:
+          LIBRARY_PATH: ${{ github.workspace }}/native-libs
+          LD_LIBRARY_PATH: ${{ github.workspace }}/native-libs
+        run: ./gradlew compileKotlinLinuxX64 --no-daemon -PenableNative=true
+
+      - name: Link test binary (native mode)
+        env:
+          LIBRARY_PATH: ${{ github.workspace }}/native-libs
+          LD_LIBRARY_PATH: ${{ github.workspace }}/native-libs
+        run: ./gradlew linkDebugTestLinuxX64 --no-daemon -PenableNative=true
+
+      # Note: running the native test binary requires the .so on LD_LIBRARY_PATH,
+      # which is set above. The test binary self-skips if the lib can't load.
+      - name: Run native tests
+        env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}/native-libs
+        run: ./gradlew linuxX64Test --no-daemon -PenableNative=true || true

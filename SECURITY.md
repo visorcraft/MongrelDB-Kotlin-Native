@@ -1,0 +1,136 @@
+# Security
+
+This document describes the security properties of the MongrelDB Kotlin/Native
+client and how to report vulnerabilities.
+
+## Overview
+
+The MongrelDB Kotlin/Native client is a Kotlin Multiplatform library that
+compiles to native machine code (no JVM). In HTTP mode it talks to
+`mongreldb-server` over HTTP using ktor-client-curl (which wraps libcurl). In
+native mode it links `libmongreldb_kit` + `libmongreldb` directly and runs the
+engine in-process. The client itself holds no encryption keys and stores no
+data at rest; in HTTP mode it is a thin request/response layer over the daemon.
+
+## Client security properties
+
+- The client communicates with `mongreldb-server` over plain HTTP. The
+  daemon binds to `127.0.0.1` by default - traffic stays on the loopback
+  interface. For remote or multi-tenant deployments, terminate TLS in a
+  reverse proxy (nginx, Caddy) in front of the daemon.
+- The client supports Bearer token and HTTP Basic auth, matching the
+  daemon's `--auth-token` and `--auth-users` modes. Credentials are sent
+  only in the `Authorization` header and are never logged by the client.
+  The HTTP Basic encoder is implemented inline (Kotlin/Native has no
+  `java.util.Base64`); it produces a standard RFC 7617 header value.
+- The native condition API and query builder accept typed parameters
+  (`Value` sealed class, `Column` ids, typed `Condition` subtypes) - no
+  string interpolation, no SQL injection surface. User-supplied values are
+  serialized as typed JSON by kotlinx.serialization, not concatenated into
+  queries.
+- **WARNING - raw SQL:** The `sql()` method sends a raw SQL string to the
+  server. It does NOT parameterize or sanitize input, and the client never
+  interprets SQL locally. Never interpolate untrusted user input into SQL
+  statements - use parameterized queries where the server supports them, or
+  validate/escape input yourself. (The native condition API and query
+  builder remain type-safe and are not affected.)
+- Idempotency keys are caller-supplied opaque strings; the client does not
+  derive or store them.
+- JSON decoding uses kotlinx.serialization with `ignoreUnknownKeys = true`,
+  so additive server responses do not expose unsafe parsing paths.
+  Malformed JSON surfaces as a `QueryException` rather than undefined
+  behavior.
+- All native FFI handles (`mongreldb_kit_database_t`, returned JSON/Arrow
+  buffers) are freed through the matching `mongreldb_kit_*_free` call inside
+  a `memScoped` block; there are no caller-side free obligations that could
+  be missed. `NativeDB` implements `AutoCloseable`.
+- Memory management is Kotlin/Native's default (ARC). The client owns the
+  ktor `HttpClient` and releases it on `close()`.
+
+## Daemon security (mongreldb-server)
+
+The client is a consumer of `mongreldb-server`. The daemon's security
+posture:
+
+- Binds to `127.0.0.1` only - not accessible from other machines.
+- **No authentication by default** - any local process can query, write, or
+  delete data. Enable `--auth-token` or `--auth-users` for any shared host.
+- No TLS - traffic is plaintext on the loopback interface.
+- No rate limiting or request size caps.
+
+For remote access or multi-tenant environments, place a reverse proxy
+(nginx, Caddy) in front with TLS termination and authentication. Do not
+expose the daemon directly to a network.
+
+## Native embedded security
+
+When you link `libmongreldb_kit` + `libmongreldb` directly (the
+`-PenableNative=true` mode), the engine runs in your process. The same
+engine that powers `mongreldb-server` executes your SQL, migrations, and
+queries with full filesystem access to the database directory you pass to
+`NativeDB.open` / `NativeDB.create`. Treat the database directory with the
+same care as any local data store.
+
+- `NativeDB` is single-threaded (Kotlin/Native `Rc<RefCell>`). Create one
+  per worker; do not share across threads.
+- SQL passed to `sqlRows` / `sqlArrow` is raw and unparameterized - the
+  same WARNING about interpolating untrusted input applies.
+- Migration JSON is trusted input. Do not run migrations from untrusted
+  sources; they execute arbitrary `raw_sql`.
+
+## Input validation
+
+- The query builder produces typed JSON requests. Invalid column ids, value
+  encodings, and numeric ranges are serialized as typed JSON, not
+  concatenated strings.
+- Server and network errors are mapped to the typed exception hierarchy
+  (`AuthException`, `NotFoundException`, `ConflictException`,
+  `QueryException`), not leaked as generic failures. See [errors.md](docs/errors.md).
+
+## Dependency security
+
+The MongrelDB Kotlin/Native client has these runtime dependencies:
+
+- **ktor-client-curl** (which wraps **libcurl**) for HTTP.
+- **kotlinx-serialization-json** for the wire format.
+- The Kotlin/Native runtime and standard library.
+
+Keep libcurl patched via your system package manager. For native mode, keep
+`libmongreldb` + `libmongreldb_kit` current with the
+[MongrelDB releases](https://github.com/visorcraft/MongrelDB/releases).
+Report dependency vulnerabilities through GitHub's Dependabot alerts or the
+private vulnerability reporting flow below.
+
+## Reporting a vulnerability
+
+**Do not file a public GitHub issue, discussion, or pull request for
+security problems.** Report privately through **GitHub's private
+vulnerability reporting**:
+
+1. Go to the repository's **Security** tab.
+2. Click **Report a vulnerability**.
+3. Fill in the advisory form with the details below.
+
+This keeps the report confidential between you and the maintainers
+until a fix is ready. Please include as much as you can:
+
+- a description of the issue and its impact,
+- step-by-step reproduction steps,
+- the MongrelDB Kotlin/Native client version, Kotlin toolchain version,
+  Gradle version, OS, and native target,
+- the `mongreldb-server` version (HTTP mode) or `libmongreldb` /
+  `libmongreldb_kit` version (native mode) if relevant,
+- the relevant configuration, error output, or a proof-of-concept,
+- a suggested fix or mitigation, if you have one.
+
+### What to expect
+
+- **Acknowledgement** of your report within a few days.
+- An initial assessment and, where confirmed, a remediation plan.
+- Progress updates through the private advisory thread until the
+  issue is resolved.
+- Credit for your responsible disclosure in the advisory, unless you
+  prefer to remain anonymous.
+
+We ask that you give us a reasonable opportunity to ship a fix before
+any public disclosure.
