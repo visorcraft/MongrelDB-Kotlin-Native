@@ -82,7 +82,7 @@ kotlin {
     if (enableNative) {
         targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget> {
             compilations["main"].cinterops {
-                val mongreldbKit by.creating {
+                val mongreldbKit by creating {
                     defFile = project.file("src/nativeInterop/cinterop/mongreldb_kit.def")
                     packageName = "com.visorcraft.mongreldb.native"
                 }
