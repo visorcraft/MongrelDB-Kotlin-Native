@@ -15,9 +15,10 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.URLBuilder
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
-import io.ktor.http.url
+import io.ktor.http.takeFrom
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -55,7 +56,7 @@ internal class HttpTransport(
 
     suspend fun getBody(path: String): String {
         val response = client.get {
-            url(fullUrl(path))
+            url { takeFrom(fullUrl(path)) }
             applyAuth()
         }
         return handleResponse(response)
@@ -63,7 +64,7 @@ internal class HttpTransport(
 
     suspend fun postBody(path: String, body: String): String {
         val response = client.post {
-            url(fullUrl(path))
+            url { takeFrom(fullUrl(path)) }
             contentType(ContentType.Application.Json)
             applyAuth()
             setBody(body)
@@ -73,7 +74,7 @@ internal class HttpTransport(
 
     suspend fun putBody(path: String, body: String): String {
         val response = client.put {
-            url(fullUrl(path))
+            url { takeFrom(fullUrl(path)) }
             contentType(ContentType.Application.Json)
             applyAuth()
             setBody(body)
@@ -83,14 +84,14 @@ internal class HttpTransport(
 
     suspend fun deleteBody(path: String): String {
         val response = client.delete {
-            url(fullUrl(path))
+            url { takeFrom(fullUrl(path)) }
             applyAuth()
         }
         return handleResponse(response)
     }
 
     suspend fun getOk(path: String): Boolean = try {
-        client.get { url(fullUrl(path)); applyAuth() }.status.isSuccess()
+        client.get { url { takeFrom(fullUrl(path)) }; applyAuth() }.status.isSuccess()
     } catch (e: Exception) {
         false
     }

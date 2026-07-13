@@ -36,10 +36,9 @@ import kotlinx.serialization.json.add
 class MongrelDB(
     url: String = DEFAULT_URL,
     authHeader: Pair<String, String>? = null,
-    timeoutSeconds: Long = 30L,
 ) : AutoCloseable {
 
-    private val transport = HttpTransport(url, authHeader, timeoutSeconds)
+    private val transport = HttpTransport(url, authHeader)
 
     private val json = transport.json
 
