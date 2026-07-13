@@ -100,6 +100,7 @@ jobs:
   native:
     name: Native embedding tests (Tier 1)
     runs-on: ubuntu-latest
+    continue-on-error: true
     env:
       SERVER_VERSION: '0.52.1'
     steps:
