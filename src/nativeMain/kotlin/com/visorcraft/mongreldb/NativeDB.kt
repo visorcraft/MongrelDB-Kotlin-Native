@@ -21,14 +21,14 @@ import com.visorcraft.mongreldb.native.mongreldb_kit_query_upsert_json
 import com.visorcraft.mongreldb.native.mongreldb_kit_query_delete_json
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.CPointer
-import kotlinx.cinterop.CPointerVar
-import kotlinx.cinterop.ULongVar
 import kotlinx.cinterop.UByteVar
 import kotlinx.cinterop.alloc
+import kotlinx.cinterop.allocPointerTo
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.readBytes
 import kotlinx.cinterop.toKString
+import kotlinx.cinterop.ULongVar
 
 /**
  * Native embedded MongrelDB database (Tier 1).
@@ -80,11 +80,11 @@ class NativeDB private constructor(
      * For DDL/DML the result is `[]`.
      */
     fun sqlRows(sql: String): String = memScoped {
-        val outJson = alloc<CPointerVar<ByteVar>>()
-        val rc = mongreldb_kit_sql_rows(db, sql, outJson.ptr)
+        val outJson = allocPointerTo<ByteVar>()
+        val rc = mongreldb_kit_sql_rows(db, sql, outJson)
         checkRc(rc, "sqlRows")
-        val result = outJson.pointed.value?.toKString() ?: "[]"
-        mongreldb_kit_free_json(outJson.pointed.value)
+        val result = outJson.value?.toKString() ?: "[]"
+        mongreldb_kit_free_json(outJson.value)
         result
     }
 
@@ -93,13 +93,13 @@ class NativeDB private constructor(
      * For DDL/DML the result is an empty byte array.
      */
     fun sqlArrow(sql: String): ByteArray = memScoped {
-        val outBuf = alloc<CPointerVar<UByteVar>>()
+        val outBuf = allocPointerTo<UByteVar>()
         val outLen = alloc<ULongVar>()
-        val rc = mongreldb_kit_sql_arrow(db, sql, outBuf.ptr, outLen.ptr)
+        val rc = mongreldb_kit_sql_arrow(db, sql, outBuf, outLen.ptr)
         checkRc(rc, "sqlArrow")
-        val len = outLen.pointed.value.toInt()
-        val result = if (len > 0) outBuf.pointed.value!!.readBytes(len) else ByteArray(0)
-        mongreldb_kit_free_arrow(outBuf.pointed.value, outLen.pointed.value)
+        val len = outLen.value.toInt()
+        val result = if (len > 0) outBuf.value!!.readBytes(len) else ByteArray(0)
+        mongreldb_kit_free_arrow(outBuf.value, outLen.value)
         result
     }
 
@@ -111,61 +111,61 @@ class NativeDB private constructor(
 
     /** Read applied migrations as a JSON array. */
     fun appliedMigrations(): String = memScoped {
-        val outJson = alloc<CPointerVar<ByteVar>>()
-        val rc = mongreldb_kit_applied_migrations_json(db, outJson.ptr)
+        val outJson = allocPointerTo<ByteVar>()
+        val rc = mongreldb_kit_applied_migrations_json(db, outJson)
         checkRc(rc, "appliedMigrations")
-        val result = outJson.pointed.value?.toKString() ?: "[]"
-        mongreldb_kit_free_json(outJson.pointed.value)
+        val result = outJson.value?.toKString() ?: "[]"
+        mongreldb_kit_free_json(outJson.value)
         result
     }
 
     /** Run a SELECT query (JSON Kit query AST) and return JSON rows. */
     fun querySelect(queryJson: String): String = memScoped {
-        val outJson = alloc<CPointerVar<ByteVar>>()
-        val rc = mongreldb_kit_query_select_json(db, queryJson, outJson.ptr)
+        val outJson = allocPointerTo<ByteVar>()
+        val rc = mongreldb_kit_query_select_json(db, queryJson, outJson)
         checkRc(rc, "querySelect")
-        val result = outJson.pointed.value?.toKString() ?: "[]"
-        mongreldb_kit_free_json(outJson.pointed.value)
+        val result = outJson.value?.toKString() ?: "[]"
+        mongreldb_kit_free_json(outJson.value)
         result
     }
 
     /** Run an INSERT query (JSON Kit query AST) and return JSON returning values. */
     fun queryInsert(queryJson: String): String = memScoped {
-        val outJson = alloc<CPointerVar<ByteVar>>()
-        val rc = mongreldb_kit_query_insert_json(db, queryJson, outJson.ptr)
+        val outJson = allocPointerTo<ByteVar>()
+        val rc = mongreldb_kit_query_insert_json(db, queryJson, outJson)
         checkRc(rc, "queryInsert")
-        val result = outJson.pointed.value?.toKString() ?: "[]"
-        mongreldb_kit_free_json(outJson.pointed.value)
+        val result = outJson.value?.toKString() ?: "[]"
+        mongreldb_kit_free_json(outJson.value)
         result
     }
 
     /** Run an UPDATE query (JSON Kit query AST) and return JSON returning values. */
     fun queryUpdate(queryJson: String): String = memScoped {
-        val outJson = alloc<CPointerVar<ByteVar>>()
-        val rc = mongreldb_kit_query_update_json(db, queryJson, outJson.ptr)
+        val outJson = allocPointerTo<ByteVar>()
+        val rc = mongreldb_kit_query_update_json(db, queryJson, outJson)
         checkRc(rc, "queryUpdate")
-        val result = outJson.pointed.value?.toKString() ?: "[]"
-        mongreldb_kit_free_json(outJson.pointed.value)
+        val result = outJson.value?.toKString() ?: "[]"
+        mongreldb_kit_free_json(outJson.value)
         result
     }
 
     /** Run an UPSERT query (JSON Kit query AST) and return JSON returning values. */
     fun queryUpsert(queryJson: String): String = memScoped {
-        val outJson = alloc<CPointerVar<ByteVar>>()
-        val rc = mongreldb_kit_query_upsert_json(db, queryJson, outJson.ptr)
+        val outJson = allocPointerTo<ByteVar>()
+        val rc = mongreldb_kit_query_upsert_json(db, queryJson, outJson)
         checkRc(rc, "queryUpsert")
-        val result = outJson.pointed.value?.toKString() ?: "[]"
-        mongreldb_kit_free_json(outJson.pointed.value)
+        val result = outJson.value?.toKString() ?: "[]"
+        mongreldb_kit_free_json(outJson.value)
         result
     }
 
     /** Run a DELETE query (JSON Kit query AST) and return JSON returning values. */
     fun queryDelete(queryJson: String): String = memScoped {
-        val outJson = alloc<CPointerVar<ByteVar>>()
-        val rc = mongreldb_kit_query_delete_json(db, queryJson, outJson.ptr)
+        val outJson = allocPointerTo<ByteVar>()
+        val rc = mongreldb_kit_query_delete_json(db, queryJson, outJson)
         checkRc(rc, "queryDelete")
-        val result = outJson.pointed.value?.toKString() ?: "[]"
-        mongreldb_kit_free_json(outJson.pointed.value)
+        val result = outJson.value?.toKString() ?: "[]"
+        mongreldb_kit_free_json(outJson.value)
         result
     }
 
