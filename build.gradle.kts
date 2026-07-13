@@ -67,14 +67,13 @@ kotlin {
             dependsOn(commonTest)
         }
 
-        linuxX64Main by getting { dependsOn(nativeMain) }
-        linuxX64Test by getting { dependsOn(nativeTest) }
-        macosX64Main by getting { dependsOn(nativeMain) }
-        macosX64Test by getting { dependsOn(nativeTest) }
-        macosArm64Main by getting { dependsOn(nativeMain) }
-        macosArm64Test by getting { dependsOn(nativeTest) }
-        mingwX64Main by getting { dependsOn(nativeMain) }
-        mingwX64Test by getting { dependsOn(nativeTest) }
+        // Wire each target's main/test source sets to the shared native ones.
+        // Using string-based lookup because the per-target source sets are
+        // registered lazily by the Kotlin/Native plugin.
+        listOf("linuxX64", "macosX64", "macosArm64", "mingwX64").forEach { target ->
+            getByName("${target}Main").dependsOn(nativeMain)
+            getByName("${target}Test").dependsOn(nativeTest)
+        }
     }
 
     // cinterop: generate Kotlin bindings from the Kit C ABI header.
