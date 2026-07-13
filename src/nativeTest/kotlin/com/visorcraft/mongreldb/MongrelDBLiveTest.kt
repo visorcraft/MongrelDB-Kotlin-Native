@@ -204,13 +204,10 @@ class MongrelDBLiveTest {
 /** Thrown to signal that a test was skipped (no daemon available). */
 class TestSkippedException : RuntimeException("test skipped")
 
-/** Thrown to signal that a test was skipped (no daemon available). */
-class TestSkippedException : RuntimeException("test skipped")
-
 /** Minimal getenv for Kotlin/Native (platform.posix). */
 @OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
 private fun getenv(name: String): String? =
-    platform.posix.getenv(name)?.toKString()
+    platform.posix.getenv(name)?.let { kotlinx.cinterop.toKString(it) }
 
 /** Milliseconds since the Unix epoch, for generating unique table names. */
 private fun currentTimeMillis(): Long =
