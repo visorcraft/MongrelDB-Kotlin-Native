@@ -12,8 +12,13 @@
 headers = mongreldb_kit.h
 headerFilter = mongreldb_kit.h
 
+compilerOpts.linux = -I${projectDir}/native-headers
+compilerOpts.macos = -I${projectDir}/native-headers
+compilerOpts.mingw = -I${projectDir}/native-headers
+
 // Linker flags: search for libmongreldb_kit and libmongreldb.
 // The actual paths are resolved at build time via the linker's search path.
 linkerOpts.linux = -lmongreldb_kit -lmongreldb
 linkerOpts.macos = -lmongreldb_kit -lmongreldb
 linkerOpts.mingw = mongreldb_kit.lib mongreldb.lib
+
