@@ -88,6 +88,7 @@ kotlin {
                 val mongreldbKit by creating {
                     defFile = project.file("src/nativeInterop/cinterop/mongreldb_kit.def")
                     packageName = "com.visorcraft.mongreldb.native"
+                    includeDirs(project.file("native-headers").absolutePath)
                 }
             }
         }

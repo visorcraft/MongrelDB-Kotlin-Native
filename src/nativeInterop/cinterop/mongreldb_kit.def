@@ -8,13 +8,12 @@
 // be on the linker search path. Set MONGRELDB_NATIVE_DIR or place them in a
 // standard location (/usr/local/lib, etc.). For CI, the workflow downloads
 // the prebuilt archives and sets the library path.
+//
+// The include path for the header is set in build.gradle.kts via the
+// cinterop configuration's includeDirs property.
 
 headers = mongreldb_kit.h
 headerFilter = mongreldb_kit.h
-
-compilerOpts.linux = -I${projectDir}/native-headers
-compilerOpts.macos = -I${projectDir}/native-headers
-compilerOpts.mingw = -I${projectDir}/native-headers
 
 // Linker flags: search for libmongreldb_kit and libmongreldb.
 // The actual paths are resolved at build time via the linker's search path.
