@@ -6,6 +6,12 @@ package com.visorcraft.mongreldb
 import com.visorcraft.mongreldb.native.mongreldb_kit_database_t
 import com.visorcraft.mongreldb.native.mongreldb_kit_open
 import com.visorcraft.mongreldb.native.mongreldb_kit_create
+import com.visorcraft.mongreldb.native.mongreldb_kit_open_encrypted
+import com.visorcraft.mongreldb.native.mongreldb_kit_create_encrypted
+import com.visorcraft.mongreldb.native.mongreldb_kit_open_with_credentials
+import com.visorcraft.mongreldb.native.mongreldb_kit_create_with_credentials
+import com.visorcraft.mongreldb.native.mongreldb_kit_open_encrypted_with_credentials
+import com.visorcraft.mongreldb.native.mongreldb_kit_create_encrypted_with_credentials
 import com.visorcraft.mongreldb.native.mongreldb_kit_database_free
 import com.visorcraft.mongreldb.native.mongreldb_kit_sql_rows
 import com.visorcraft.mongreldb.native.mongreldb_kit_sql_arrow
@@ -50,6 +56,74 @@ class NativeDB private constructor(
         fun create(path: String, schema: String): NativeDB {
             val handle = mongreldb_kit_create(path, schema)
             checkNotNull(handle) { "mongreldb_kit_create failed: ${lastError()}" }
+            return NativeDB(handle)
+        }
+
+        /** Opens an AES-256-GCM encrypted Kit database with a passphrase. */
+        fun openEncrypted(path: String, passphrase: String): NativeDB {
+            val handle = mongreldb_kit_open_encrypted(path, passphrase)
+            checkNotNull(handle) { "mongreldb_kit_open_encrypted failed: ${lastError()}" }
+            return NativeDB(handle)
+        }
+
+        /** Creates an AES-256-GCM encrypted Kit database with a passphrase. */
+        fun createEncrypted(path: String, schema: String, passphrase: String): NativeDB {
+            val handle = mongreldb_kit_create_encrypted(path, schema, passphrase)
+            checkNotNull(handle) { "mongreldb_kit_create_encrypted failed: ${lastError()}" }
+            return NativeDB(handle)
+        }
+
+        /** Opens a Kit database with storage-layer username/password credentials. */
+        fun openWithCredentials(path: String, username: String, password: String): NativeDB {
+            val handle = mongreldb_kit_open_with_credentials(path, username, password)
+            checkNotNull(handle) { "mongreldb_kit_open_with_credentials failed: ${lastError()}" }
+            return NativeDB(handle)
+        }
+
+        /** Creates a credentialed Kit database (require_auth + admin user). */
+        fun createWithCredentials(
+            path: String,
+            schema: String,
+            adminUsername: String,
+            adminPassword: String,
+        ): NativeDB {
+            val handle = mongreldb_kit_create_with_credentials(
+                path, schema, adminUsername, adminPassword
+            )
+            checkNotNull(handle) { "mongreldb_kit_create_with_credentials failed: ${lastError()}" }
+            return NativeDB(handle)
+        }
+
+        /** Opens encrypted + credentialed Kit database. */
+        fun openEncryptedWithCredentials(
+            path: String,
+            passphrase: String,
+            username: String,
+            password: String,
+        ): NativeDB {
+            val handle = mongreldb_kit_open_encrypted_with_credentials(
+                path, passphrase, username, password
+            )
+            checkNotNull(handle) {
+                "mongreldb_kit_open_encrypted_with_credentials failed: ${lastError()}"
+            }
+            return NativeDB(handle)
+        }
+
+        /** Creates encrypted + credentialed Kit database (passphrase + admin user). */
+        fun createEncryptedWithCredentials(
+            path: String,
+            schema: String,
+            passphrase: String,
+            adminUsername: String,
+            adminPassword: String,
+        ): NativeDB {
+            val handle = mongreldb_kit_create_encrypted_with_credentials(
+                path, schema, passphrase, adminUsername, adminPassword
+            )
+            checkNotNull(handle) {
+                "mongreldb_kit_create_encrypted_with_credentials failed: ${lastError()}"
+            }
             return NativeDB(handle)
         }
 
