@@ -27,7 +27,7 @@ jobs:
     name: Build & test (HTTP mode)
     runs-on: ubuntu-latest
     env:
-      SERVER_VERSION: '0.60.3'
+      SERVER_VERSION: '0.61.1'
       MONGRELDB_URL: http://127.0.0.1:8453
     steps:
       - uses: actions/checkout@v5
@@ -102,7 +102,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     env:
-      SERVER_VERSION: '0.60.3'
+      SERVER_VERSION: '0.61.1'
     steps:
       - uses: actions/checkout@v5
 
