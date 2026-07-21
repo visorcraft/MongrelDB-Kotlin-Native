@@ -2,8 +2,10 @@
 package com.visorcraft.mongreldb
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import kotlin.test.Test
@@ -143,5 +145,18 @@ class CreateTableWireShapeTest {
         val cond = Condition.Range(columnId = 5, lo = 10.0, hi = null)
         assertEquals(10.0, cond.lo)
         assertNull(cond.hi)
+    }
+
+    @Test
+    fun `ANN backend options survive indexes JSON`() {
+        val indexes = json.parseToJsonElement(
+            """[{"name":"ann","column_id":2,"kind":"ann","options":{"ann":{"algorithm":"diskann","quantization":"dense","diskann":{"r":64,"l":128,"beam_width":8,"alpha":120}}}}]""",
+        )
+        val body = buildJsonObject { put("indexes", indexes) }
+        val ann = body["indexes"]!!.jsonArray[0].jsonObject["options"]!!
+            .jsonObject["ann"]!!.jsonObject
+        assertEquals("diskann", ann["algorithm"]!!.jsonPrimitive.content)
+        assertEquals("dense", ann["quantization"]!!.jsonPrimitive.content)
+        assertEquals(8L, ann["diskann"]!!.jsonObject["beam_width"]!!.jsonPrimitive.long)
     }
 }
