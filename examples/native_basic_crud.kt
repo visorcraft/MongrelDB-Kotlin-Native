@@ -17,7 +17,7 @@
  *      tar xzf native.tar.gz        # -> mongreldb-native/{lib,include}/
  *
  *      curl -fsSL -o kit-native.tar.gz \
- *        https://github.com/visorcraft/MongrelDB/releases/download/v0.63.0/mongreldb-kit-native-linux-x64-gnu.tar.gz
+ *        https://github.com/visorcraft/MongrelDB/releases/download/v0.63.1/mongreldb-kit-native-linux-x64-gnu.tar.gz
  *      tar xzf kit-native.tar.gz    # -> mongreldb-kit-native/{lib,include}/
  *
  * 2. Put the headers where cinterop can find them (the .def file references
