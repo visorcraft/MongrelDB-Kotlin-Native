@@ -17,7 +17,6 @@ headerFilter = mongreldb_kit.h
 
 // Linker flags: search for libmongreldb_kit and libmongreldb.
 // The actual paths are resolved at build time via the linker's search path.
-linkerOpts.linux = -lmongreldb_kit -lmongreldb
+linkerOpts.linux = -lmongreldb_kit -lmongreldb -lm -ldl -lpthread
 linkerOpts.macos = -lmongreldb_kit -lmongreldb
 linkerOpts.mingw = mongreldb_kit.lib mongreldb.lib
-

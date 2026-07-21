@@ -129,14 +129,13 @@ jobs:
           curl -fsSL -o /tmp/core.tar.gz \
             "https://github.com/visorcraft/MongrelDB/releases/download/v${SERVER_VERSION}/mongreldb-native-linux-x64-gnu.tar.gz"
           tar xzf /tmp/core.tar.gz -C /tmp --strip-components=1
-          cp /tmp/lib/libmongreldb.so native-libs/
-          cp /tmp/lib/libmongreldb.a native-libs/ || true
+          cp /tmp/lib/libmongreldb.a native-libs/
 
           curl -fsSL -o /tmp/kit.tar.gz \
             "https://github.com/visorcraft/MongrelDB/releases/download/v${SERVER_VERSION}/mongreldb-kit-native-linux-x64-gnu.tar.gz"
           mkdir -p /tmp/kit
           tar xzf /tmp/kit.tar.gz -C /tmp/kit --strip-components=1
-          cp /tmp/kit/lib/libmongreldb_kit.so native-libs/
+          cp /tmp/kit/lib/libmongreldb_kit.a native-libs/
 
           echo "=== native-libs ==="
           ls -la native-libs/
@@ -147,7 +146,7 @@ jobs:
       - name: Link test binary (native mode)
         run: ./gradlew linkDebugTestLinuxX64 --no-daemon -PenableNative=true
 
-      # Note: running the native test binary requires the .so on LD_LIBRARY_PATH,
-      # which is set above. The test binary self-skips if the lib can't load.
+      # The static archives avoid binding the Kotlin/Native sysroot to the
+      # release runner's newer glibc symbol versions.
       - name: Run native tests
         run: ./gradlew linuxX64Test --no-daemon -PenableNative=true
