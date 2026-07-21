@@ -27,7 +27,7 @@ jobs:
     name: Build & test (HTTP mode)
     runs-on: ubuntu-latest
     env:
-      SERVER_VERSION: '0.63.0'
+      SERVER_VERSION: '0.63.1'
       MONGRELDB_URL: http://127.0.0.1:8453
     steps:
       - uses: actions/checkout@v5
@@ -101,7 +101,7 @@ jobs:
     name: Native embedding tests (Tier 1)
     runs-on: ubuntu-latest
     env:
-      SERVER_VERSION: '0.63.0'
+      SERVER_VERSION: '0.63.1'
       MONGRELDB_NATIVE_DIR: ${{ github.workspace }}/native-libs
       LIBRARY_PATH: ${{ github.workspace }}/native-libs
       LD_LIBRARY_PATH: ${{ github.workspace }}/native-libs

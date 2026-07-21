@@ -13,7 +13,7 @@
  *    (mongreldb-native-* and mongreldb-kit-native-* archives):
  *
  *      curl -fsSL -o native.tar.gz \
- *        https://github.com/visorcraft/MongrelDB/releases/download/v0.63.0/mongreldb-native-linux-x64-gnu.tar.gz
+ *        https://github.com/visorcraft/MongrelDB/releases/download/v0.63.1/mongreldb-native-linux-x64-gnu.tar.gz
  *      tar xzf native.tar.gz        # -> mongreldb-native/{lib,include}/
  *
  *      curl -fsSL -o kit-native.tar.gz \
