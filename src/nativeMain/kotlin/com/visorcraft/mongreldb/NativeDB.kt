@@ -35,6 +35,7 @@ import kotlinx.cinterop.ptr
 import kotlinx.cinterop.readBytes
 import kotlinx.cinterop.toKString
 import kotlinx.cinterop.ULongVar
+import kotlinx.cinterop.value
 
 /**
  * Native embedded MongrelDB database (Tier 1).
@@ -139,8 +140,8 @@ class NativeDB private constructor(
         val out = alloc<CPointerVar<ByteVar>>()
         val rc = mongreldb_kit_sql_rows(db, sql, out.ptr)
         checkRc(rc, "sqlRows")
-        val result = out.useContents { value }?.toKString() ?: "[]"
-        mongreldb_kit_free_json(out.useContents { value })
+        val result = out.value?.toKString() ?: "[]"
+        mongreldb_kit_free_json(out.value)
         result
     }
 
@@ -149,9 +150,9 @@ class NativeDB private constructor(
         val outLen = alloc<ULongVar>()
         val rc = mongreldb_kit_sql_arrow(db, sql, outBuf.ptr, outLen.ptr)
         checkRc(rc, "sqlArrow")
-        val len = outLen.useContents { value }.toInt()
-        val result = if (len > 0) outBuf.useContents { value }!!.readBytes(len) else ByteArray(0)
-        mongreldb_kit_free_arrow(outBuf.useContents { value }, outLen.useContents { value })
+        val len = outLen.value.toInt()
+        val result = if (len > 0) outBuf.value!!.readBytes(len) else ByteArray(0)
+        mongreldb_kit_free_arrow(outBuf.value, outLen.value)
         result
     }
 
@@ -164,8 +165,8 @@ class NativeDB private constructor(
         val out = alloc<CPointerVar<ByteVar>>()
         val rc = mongreldb_kit_applied_migrations_json(db, out.ptr)
         checkRc(rc, "appliedMigrations")
-        val result = out.useContents { value }?.toKString() ?: "[]"
-        mongreldb_kit_free_json(out.useContents { value })
+        val result = out.value?.toKString() ?: "[]"
+        mongreldb_kit_free_json(out.value)
         result
     }
 
@@ -173,8 +174,8 @@ class NativeDB private constructor(
         val out = alloc<CPointerVar<ByteVar>>()
         val rc = mongreldb_kit_query_select_json(db, queryJson, out.ptr)
         checkRc(rc, "querySelect")
-        val result = out.useContents { value }?.toKString() ?: "[]"
-        mongreldb_kit_free_json(out.useContents { value })
+        val result = out.value?.toKString() ?: "[]"
+        mongreldb_kit_free_json(out.value)
         result
     }
 
@@ -182,8 +183,8 @@ class NativeDB private constructor(
         val out = alloc<CPointerVar<ByteVar>>()
         val rc = mongreldb_kit_query_insert_json(db, queryJson, out.ptr)
         checkRc(rc, "queryInsert")
-        val result = out.useContents { value }?.toKString() ?: "[]"
-        mongreldb_kit_free_json(out.useContents { value })
+        val result = out.value?.toKString() ?: "[]"
+        mongreldb_kit_free_json(out.value)
         result
     }
 
@@ -191,8 +192,8 @@ class NativeDB private constructor(
         val out = alloc<CPointerVar<ByteVar>>()
         val rc = mongreldb_kit_query_update_json(db, queryJson, out.ptr)
         checkRc(rc, "queryUpdate")
-        val result = out.useContents { value }?.toKString() ?: "[]"
-        mongreldb_kit_free_json(out.useContents { value })
+        val result = out.value?.toKString() ?: "[]"
+        mongreldb_kit_free_json(out.value)
         result
     }
 
@@ -200,8 +201,8 @@ class NativeDB private constructor(
         val out = alloc<CPointerVar<ByteVar>>()
         val rc = mongreldb_kit_query_upsert_json(db, queryJson, out.ptr)
         checkRc(rc, "queryUpsert")
-        val result = out.useContents { value }?.toKString() ?: "[]"
-        mongreldb_kit_free_json(out.useContents { value })
+        val result = out.value?.toKString() ?: "[]"
+        mongreldb_kit_free_json(out.value)
         result
     }
 
@@ -209,8 +210,8 @@ class NativeDB private constructor(
         val out = alloc<CPointerVar<ByteVar>>()
         val rc = mongreldb_kit_query_delete_json(db, queryJson, out.ptr)
         checkRc(rc, "queryDelete")
-        val result = out.useContents { value }?.toKString() ?: "[]"
-        mongreldb_kit_free_json(out.useContents { value })
+        val result = out.value?.toKString() ?: "[]"
+        mongreldb_kit_free_json(out.value)
         result
     }
 

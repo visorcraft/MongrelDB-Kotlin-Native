@@ -60,17 +60,26 @@ class MongrelDB(
 
     /** Create a table. Returns the assigned table id, or null if the server omitted it. */
     fun createTable(name: String, columns: List<Column>): Long? = runBlocking {
-        createTableInternal(name, columns, null)
+        createTableInternal(name, columns, null, null)
     }
 
     /** Create a table with full Kit constraints JSON (unique, FK, CHECK). */
     fun createTable(name: String, columns: List<Column>, constraintsJson: String): Long? =
-        runBlocking { createTableInternal(name, columns, constraintsJson) }
+        runBlocking { createTableInternal(name, columns, constraintsJson, null) }
+
+    /** Create a table with full secondary-index definitions. */
+    fun createTable(
+        name: String,
+        columns: List<Column>,
+        constraintsJson: String?,
+        indexesJson: String,
+    ): Long? = runBlocking { createTableInternal(name, columns, constraintsJson, indexesJson) }
 
     private suspend fun createTableInternal(
         name: String,
         columns: List<Column>,
         constraintsJson: String?,
+        indexesJson: String?,
     ): Long? {
         val body = buildJsonObject {
             put("name", name)
@@ -78,10 +87,13 @@ class MongrelDB(
             if (constraintsJson != null) {
                 put("constraints", json.parseToJsonElement(constraintsJson))
             }
+            if (indexesJson != null) {
+                put("indexes", json.parseToJsonElement(indexesJson))
+            }
         }.toString()
         val resp = transport.postBody("/kit/create_table", body)
         val obj = json.parseToJsonElement(resp).let { it as? JsonObject }
-        return obj?.get("id")?.jsonPrimitive?.longOrNull
+        return obj?.get("table_id")?.jsonPrimitive?.longOrNull
     }
 
     /** Drop a table by name. */
@@ -240,8 +252,7 @@ class MongrelDB(
             add(buildJsonObject {
                 put("id", col.id)
                 put("name", col.name)
-                put("storage_type", col.storageType)
-                put("application_type", col.applicationType)
+                put("ty", col.storageType)
                 put("nullable", col.nullable)
                 put("primary_key", col.primaryKey)
                 put("default", col.default)
@@ -254,6 +265,9 @@ class MongrelDB(
                 if (col.defaultValue != null) put("default_value", col.defaultValue)
                 if (col.defaultValueJson != null) put("default_value_json", col.defaultValueJson)
                 if (col.defaultExpr != null) put("default_expr", col.defaultExpr)
+                if (col.embeddingSourceJson != null) {
+                    put("embedding_source", json.parseToJsonElement(col.embeddingSourceJson))
+                }
             })
         }
     }
@@ -268,10 +282,20 @@ class MongrelDB(
         put("type", type)
         put("table", table)
         if (cells != null) {
-            put("cells", buildJsonArray { cells.forEach { add(cellToJson(it)) } })
+            put("cells", buildJsonArray {
+                cells.forEach { cell ->
+                    add(cell.columnId)
+                    add(valueToJson(cell.value))
+                }
+            })
         }
         if (updateCells != null && updateCells.isNotEmpty()) {
-            put("update_cells", buildJsonArray { updateCells.forEach { add(cellToJson(it)) } })
+            put("update_cells", buildJsonArray {
+                updateCells.forEach { cell ->
+                    add(cell.columnId)
+                    add(valueToJson(cell.value))
+                }
+            })
         }
         if (idempotencyKey != null) put("idempotency_key", idempotencyKey)
     }
@@ -297,45 +321,89 @@ class MongrelDB(
 
     private fun serializeCondition(cond: Condition): JsonObject = when (cond) {
         is Condition.PrimaryKeyInt -> buildJsonObject {
-            put("kind", "pk")
-            put("int_value", cond.value)
-            put("int_set", true)
+            put("pk", buildJsonObject { put("value", cond.value) })
         }
         is Condition.PrimaryKeyString -> buildJsonObject {
-            put("kind", "pk")
-            put("str_value", cond.value)
+            put("pk", buildJsonObject { put("value", cond.value) })
         }
         is Condition.BitmapEq -> buildJsonObject {
-            put("kind", "bitmap_eq")
-            put("column_id", cond.columnId)
-            put("str_value", cond.value)
+            put("bitmap_eq", buildJsonObject {
+                put("column_id", cond.columnId)
+                put("value", cond.value)
+            })
+        }
+        is Condition.BitmapIn -> buildJsonObject {
+            put("bitmap_in", buildJsonObject {
+                put("column_id", cond.columnId)
+                put("values", buildJsonArray { cond.values.forEach { add(valueToJson(it)) } })
+            })
+        }
+        is Condition.RangeInt -> buildJsonObject {
+            put("range", buildJsonObject {
+                put("column_id", cond.columnId)
+                put("lo", cond.lo)
+                put("hi", cond.hi)
+            })
         }
         is Condition.Range -> buildJsonObject {
-            put("kind", "range")
-            put("column_id", cond.columnId)
-            if (cond.lo != null) {
+            require(cond.lo != null && cond.hi != null) { "Range requires lo and hi" }
+            put("range_f64", buildJsonObject {
+                put("column_id", cond.columnId)
                 put("lo", cond.lo)
-                put("lo_set", true)
                 put("lo_inclusive", cond.loInclusive)
-            }
-            if (cond.hi != null) {
                 put("hi", cond.hi)
-                put("hi_set", true)
                 put("hi_inclusive", cond.hiInclusive)
-            }
+            })
         }
         is Condition.FmContains -> buildJsonObject {
-            put("kind", "fm_contains")
-            put("column_id", cond.columnId)
-            put("str_value", cond.pattern)
+            put("fm_contains", buildJsonObject {
+                put("column_id", cond.columnId)
+                put("pattern", cond.pattern)
+            })
+        }
+        is Condition.FmContainsAll -> buildJsonObject {
+            put("fm_contains_all", buildJsonObject {
+                put("column_id", cond.columnId)
+                put("patterns", buildJsonArray { cond.patterns.forEach { add(it) } })
+            })
+        }
+        is Condition.Ann -> buildJsonObject {
+            put("ann", buildJsonObject {
+                put("column_id", cond.columnId)
+                put("query", buildJsonArray { cond.query.forEach { add(it) } })
+                put("k", cond.k)
+            })
+        }
+        is Condition.SparseMatch -> buildJsonObject {
+            put("sparse_match", buildJsonObject {
+                put("column_id", cond.columnId)
+                put("query", buildJsonArray {
+                    cond.query.forEach { term ->
+                        add(buildJsonArray { add(term.token); add(term.weight) })
+                    }
+                })
+                put("k", cond.k)
+            })
+        }
+        is Condition.MinHashSimilar -> buildJsonObject {
+            put("minhash_similar", buildJsonObject {
+                put("column_id", cond.columnId)
+                put("query", buildJsonArray { cond.query.forEach { add(it) } })
+                put("k", cond.k)
+            })
+        }
+        is Condition.MinHashSimilarMembers -> buildJsonObject {
+            put("minhash_similar_members", buildJsonObject {
+                put("column_id", cond.columnId)
+                put("members", buildJsonArray { cond.members.forEach { add(valueToJson(it)) } })
+                put("k", cond.k)
+            })
         }
         is Condition.IsNull -> buildJsonObject {
-            put("kind", "is_null")
-            put("column_id", cond.columnId)
+            put("is_null", buildJsonObject { put("column_id", cond.columnId) })
         }
         is Condition.IsNotNull -> buildJsonObject {
-            put("kind", "is_not_null")
-            put("column_id", cond.columnId)
+            put("is_not_null", buildJsonObject { put("column_id", cond.columnId) })
         }
     }
 
@@ -347,13 +415,10 @@ class MongrelDB(
 
         val rows = rowsArr.map { rowEl ->
             val rowObj = rowEl.jsonObject
-            val cellsList = rowObj["cells"]?.jsonArray?.map { cellEl ->
-                val cellObj = cellEl.jsonObject
-                Cell(
-                    columnId = cellObj["column_id"]!!.jsonPrimitive.long,
-                    value = jsonToValue(cellObj["value"]!!),
-                )
-            } ?: emptyList()
+            val flat = rowObj["cells"]?.jsonArray ?: JsonArray(emptyList())
+            val cellsList = flat.chunked(2).mapNotNull { pair ->
+                if (pair.size != 2) null else Cell(pair[0].jsonPrimitive.long, jsonToValue(pair[1]))
+            }
             Row(cellsList)
         }
         return Result(rows, truncated)

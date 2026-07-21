@@ -6,37 +6,46 @@ import kotlinx.serialization.Serializable
 /**
  * A single typed value in a query result row or write operation.
  *
- * Mirrors the C [mongreldb_value] / C++ `mongreldb::Value` type: the
- * engine uses 5 value tags covering the full column-type space.
+ * Scalars and arrays use the raw JSON shapes accepted by the Kit API.
  */
-@Serializable
+@Serializable(with = ValueSerializer::class)
 sealed class Value {
     /** SQL NULL. */
     object Null : Value()
 
     /** Boolean (0 or 1 on the wire). */
-    @Serializable(with = ValueSerializer::class)
     data class Bool(val value: Boolean) : Value()
 
     /** 64-bit signed integer. */
-    @Serializable(with = ValueSerializer::class)
     data class Int64(val value: Long) : Value()
 
     /** 64-bit IEEE float. */
-    @Serializable(with = ValueSerializer::class)
     data class Float64(val value: Double) : Value()
 
     /** UTF-8 text. */
-    @Serializable(with = ValueSerializer::class)
     data class Text(val value: String) : Value()
+
+    /** Dense embedding vector. */
+    data class Embedding(val values: List<Double>) : Value()
+
+    /** Sparse weighted-token vector. */
+    data class Sparse(val terms: List<SparseTerm>) : Value()
+
+    /** JSON array, including MinHash set members. */
+    data class ArrayValue(val values: List<Value>) : Value()
 
     companion object {
         fun bool(b: Boolean) = Bool(b)
         fun int64(i: Long) = Int64(i)
         fun float64(f: Double) = Float64(f)
         fun text(s: String) = Text(s)
+        fun embedding(values: List<Double>) = Embedding(values)
+        fun sparse(terms: List<SparseTerm>) = Sparse(terms)
+        fun array(values: List<Value>) = ArrayValue(values)
     }
 }
+
+data class SparseTerm(val token: Long, val weight: Double)
 
 /** One cell in a result row: a column id paired with its value. */
 data class Cell(
@@ -93,6 +102,8 @@ data class Column(
     val defaultValueJson: String? = null,
     @kotlinx.serialization.SerialName("default_expr")
     val defaultExpr: String? = null,
+    /** Portable MongrelDB `EmbeddingSource` JSON for embedding columns. */
+    val embeddingSourceJson: String? = null,
 ) {
     companion object {
         fun int64(name: String, id: Long, primaryKey: Boolean = false, nullable: Boolean = false) =
@@ -129,6 +140,10 @@ sealed class Condition {
     /** Equality on a bitmap-indexed column (string value). */
     data class BitmapEq(val columnId: Long, val value: String) : Condition()
 
+    data class BitmapIn(val columnId: Long, val values: List<Value>) : Condition()
+
+    data class RangeInt(val columnId: Long, val lo: Long, val hi: Long) : Condition()
+
     /** Numeric range on a learned-range index. */
     data class Range(
         val columnId: Long,
@@ -140,6 +155,15 @@ sealed class Condition {
 
     /** Full-text substring match (FM-index). */
     data class FmContains(val columnId: Long, val pattern: String) : Condition()
+
+    data class FmContainsAll(val columnId: Long, val patterns: List<String>) : Condition()
+
+    data class Ann(val columnId: Long, val query: List<Double>, val k: Int) : Condition()
+
+    data class SparseMatch(val columnId: Long, val query: List<SparseTerm>, val k: Int) : Condition()
+
+    data class MinHashSimilar(val columnId: Long, val query: List<Long>, val k: Int) : Condition()
+    data class MinHashSimilarMembers(val columnId: Long, val members: List<Value>, val k: Int) : Condition()
 
     /** Null check — column is NULL. */
     data class IsNull(val columnId: Long) : Condition()

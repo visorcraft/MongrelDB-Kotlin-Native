@@ -340,6 +340,7 @@ See [errors.md](docs/errors.md).
 | `tableNames()` | List table names |
 | `createTable(name, columns)` | Create a table; column descriptors may carry enum/default fields |
 | `createTable(name, columns, constraintsJson)` | Create a table with native `constraints` JSON (including CHECKs) |
+| `createTable(name, columns, constraintsJson, indexesJson)` | Create a table with all six index kinds and options |
 | `historyRetention()` | Inspect the MVCC history retention window |
 | `setHistoryRetentionEpochs(epochs)` | Resize the MVCC history retention window |
 | `dropTable(name)` | Drop a table |

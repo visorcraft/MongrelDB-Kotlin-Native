@@ -32,6 +32,7 @@ repositories {
 // Whether to enable cinterop against libmongreldb_kit. Requires the native
 // libraries on the linker path. Set with: -PenableNative=true
 val enableNative = (project.findProperty("enableNative") as? String)?.toBoolean() ?: false
+val nativeLibraryDir = System.getenv("MONGRELDB_NATIVE_DIR")
 
 kotlin {
     // Native targets matching the engine's prebuilt library matrix.
@@ -105,6 +106,9 @@ kotlin {
     targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget> {
         binaries.all {
             freeCompilerArgs += "-Xallocator=std"
+            if (enableNative && nativeLibraryDir != null) {
+                linkerOpts("-L$nativeLibraryDir")
+            }
         }
     }
 }

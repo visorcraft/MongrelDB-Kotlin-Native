@@ -2,7 +2,6 @@
 package com.visorcraft.mongreldb
 
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -28,35 +27,41 @@ class CreateTableWireShapeTest {
 
     @Test
     fun `valueToJson encodes null`() {
-        val obj = valueToJson(Value.Null)
-        assertEquals("null", obj["tag"]!!.jsonPrimitive.content)
+        assertEquals("null", valueToJson(Value.Null).toString())
     }
 
     @Test
     fun `valueToJson encodes bool`() {
-        val obj = valueToJson(Value.Bool(true))
-        assertEquals("bool", obj["tag"]!!.jsonPrimitive.content)
-        assertEquals(true, obj["v"]!!.jsonPrimitive.boolean)
+        assertEquals(true, valueToJson(Value.Bool(true)).jsonPrimitive.boolean)
     }
 
     @Test
     fun `valueToJson encodes int64`() {
-        val obj = valueToJson(Value.Int64(42L))
-        assertEquals("int64", obj["tag"]!!.jsonPrimitive.content)
-        assertEquals(42L, obj["v"]!!.jsonPrimitive.long)
+        assertEquals(42L, valueToJson(Value.Int64(42L)).jsonPrimitive.long)
     }
 
     @Test
     fun `valueToJson encodes float64`() {
-        val obj = valueToJson(Value.Float64(3.14))
-        assertEquals("float64", obj["tag"]!!.jsonPrimitive.content)
+        assertEquals("3.14", valueToJson(Value.Float64(3.14)).jsonPrimitive.content)
     }
 
     @Test
     fun `valueToJson encodes text`() {
-        val obj = valueToJson(Value.Text("hello"))
-        assertEquals("string", obj["tag"]!!.jsonPrimitive.content)
-        assertEquals("hello", obj["v"]!!.jsonPrimitive.content)
+        assertEquals("hello", valueToJson(Value.Text("hello")).jsonPrimitive.content)
+    }
+
+    @Test
+    fun `valueToJson encodes embedding sparse and set arrays`() {
+        assertEquals("[1.0,-2.0]", valueToJson(Value.Embedding(listOf(1.0, -2.0))).toString())
+        assertEquals(
+            "[[7,0.5]]",
+            valueToJson(Value.Sparse(listOf(SparseTerm(7, 0.5)))).toString(),
+        )
+        assertEquals(
+            "[\"a\",3,true]",
+            valueToJson(Value.ArrayValue(listOf(Value.Text("a"), Value.Int64(3), Value.Bool(true))))
+                .toString(),
+        )
     }
 
     // ── jsonToValue decodes raw SQL JSON rows ──────────────────────────────
@@ -119,11 +124,10 @@ class CreateTableWireShapeTest {
     // ── InputCell serialization ────────────────────────────────────────────
 
     @Test
-    fun `cellToJson produces column_id and value`() {
+    fun `cellToJson produces flat column id and raw value pair`() {
         val cellJson = cellToJson(InputCell(1, Value.Int64(42L)))
-        assertEquals(1L, cellJson["column_id"]!!.jsonPrimitive.long)
-        val valObj = cellJson["value"] as JsonObject
-        assertEquals("int64", valObj["tag"]!!.jsonPrimitive.content)
+        assertEquals(1L, cellJson[0].jsonPrimitive.long)
+        assertEquals(42L, cellJson[1].jsonPrimitive.long)
     }
 
     // ── Condition DSL ──────────────────────────────────────────────────────

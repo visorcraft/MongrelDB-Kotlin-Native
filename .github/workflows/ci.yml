@@ -100,9 +100,11 @@ jobs:
   native:
     name: Native embedding tests (Tier 1)
     runs-on: ubuntu-latest
-    continue-on-error: true
     env:
       SERVER_VERSION: '0.61.1'
+      MONGRELDB_NATIVE_DIR: ${{ github.workspace }}/native-libs
+      LIBRARY_PATH: ${{ github.workspace }}/native-libs
+      LD_LIBRARY_PATH: ${{ github.workspace }}/native-libs
     steps:
       - uses: actions/checkout@v5
 
@@ -140,20 +142,12 @@ jobs:
           ls -la native-libs/
 
       - name: Compile (native mode, cinterop enabled)
-        env:
-          LIBRARY_PATH: ${{ github.workspace }}/native-libs
-          LD_LIBRARY_PATH: ${{ github.workspace }}/native-libs
         run: ./gradlew compileKotlinLinuxX64 --no-daemon -PenableNative=true
 
       - name: Link test binary (native mode)
-        env:
-          LIBRARY_PATH: ${{ github.workspace }}/native-libs
-          LD_LIBRARY_PATH: ${{ github.workspace }}/native-libs
         run: ./gradlew linkDebugTestLinuxX64 --no-daemon -PenableNative=true
 
       # Note: running the native test binary requires the .so on LD_LIBRARY_PATH,
       # which is set above. The test binary self-skips if the lib can't load.
       - name: Run native tests
-        env:
-          LD_LIBRARY_PATH: ${{ github.workspace }}/native-libs
-        run: ./gradlew linuxX64Test --no-daemon -PenableNative=true || true
+        run: ./gradlew linuxX64Test --no-daemon -PenableNative=true

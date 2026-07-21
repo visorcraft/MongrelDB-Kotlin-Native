@@ -9,31 +9,21 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonEncoder
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
-import kotlinx.serialization.json.put
 import kotlinx.serialization.json.contentOrNull
 
 /**
- * Serializer for [Value]: encodes/decodes the tagged-union wire format.
- *
- * On the wire, each value is a JSON object with a `tag` discriminator:
- *   - `{"tag":"null"}`
- *   - `{"tag":"bool","v":true}`
- *   - `{"tag":"int64","v":42}`
- *   - `{"tag":"float64","v":3.14}`
- *   - `{"tag":"string","v":"hello"}`
- *
- * When a Value appears as a top-level serialized field (annotated with
- * @Serializable(with = ValueSerializer::class)), this serializer handles the
- * conversion. When used inside [WireJson] (the raw JSON builder for HTTP
- * requests), values are serialized directly via [valueToJson].
+ * Serializer for [Value] using the raw JSON scalar/array shape accepted by
+ * `/kit/txn` and `/kit/query`.
  */
 object ValueSerializer : KSerializer<Value> {
     override val descriptor: SerialDescriptor =
@@ -52,17 +42,32 @@ object ValueSerializer : KSerializer<Value> {
 }
 
 /** Convert a [Value] to its JSON wire representation. */
-fun valueToJson(value: Value): JsonObject = when (value) {
-    is Value.Null -> buildJsonObject { put("tag", "null") }
-    is Value.Bool -> buildJsonObject { put("tag", "bool"); put("v", value.value) }
-    is Value.Int64 -> buildJsonObject { put("tag", "int64"); put("v", value.value) }
-    is Value.Float64 -> buildJsonObject { put("tag", "float64"); put("v", value.value) }
-    is Value.Text -> buildJsonObject { put("tag", "string"); put("v", value.value) }
+fun valueToJson(value: Value): JsonElement = when (value) {
+    is Value.Null -> JsonNull
+    is Value.Bool -> JsonPrimitive(value.value)
+    is Value.Int64 -> JsonPrimitive(value.value)
+    is Value.Float64 -> JsonPrimitive(value.value)
+    is Value.Text -> JsonPrimitive(value.value)
+    is Value.Embedding -> buildJsonArray {
+        value.values.forEach { add(JsonPrimitive(it)) }
+    }
+    is Value.Sparse -> buildJsonArray {
+        value.terms.forEach { term ->
+            add(buildJsonArray {
+                add(JsonPrimitive(term.token))
+                add(JsonPrimitive(term.weight))
+            })
+        }
+    }
+    is Value.ArrayValue -> buildJsonArray { value.values.forEach { add(valueToJson(it)) } }
 }
 
 /** Parse a JSON element into a [Value]. Accepts both tagged-union and raw scalar forms. */
 fun jsonToValue(element: kotlinx.serialization.json.JsonElement): Value {
-    // Tagged-union form: {"tag": "...", "v": ...}
+    if (element is JsonArray) {
+        return Value.ArrayValue(element.map(::jsonToValue))
+    }
+    // Legacy tagged-union form remains accepted on reads.
     if (element is JsonObject) {
         val tag = element["tag"]?.jsonPrimitive?.contentOrNull
         val v = element["v"]
@@ -88,8 +93,8 @@ fun jsonToValue(element: kotlinx.serialization.json.JsonElement): Value {
     return Value.Null
 }
 
-/** Serialize a cell for the wire format: `{"column_id": N, "value": {...}}`. */
-fun cellToJson(cell: InputCell): JsonObject = buildJsonObject {
-    put("column_id", cell.columnId)
-    put("value", valueToJson(cell.value))
+/** Serialize one cell as the flat pair expected inside `/kit/txn` cells. */
+fun cellToJson(cell: InputCell): JsonArray = buildJsonArray {
+    add(JsonPrimitive(cell.columnId))
+    add(valueToJson(cell.value))
 }
