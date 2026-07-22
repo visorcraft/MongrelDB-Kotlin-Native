@@ -205,6 +205,50 @@ class MongrelDB(
     // ── SQL ────────────────────────────────────────────────────────────────
 
     /**
+     * Text → embed → ANN retrieve (POST /kit/retrieve_text, 0.64+).
+     * Returns the raw JSON response body.
+     */
+    fun retrieveText(
+        table: String,
+        embeddingColumn: Int,
+        text: String,
+        k: Int? = null,
+        deadlineMs: Long? = null,
+        maxWork: Long? = null,
+    ): String = runBlocking {
+        require(table.isNotEmpty()) { "table is required" }
+        require(text.isNotEmpty()) { "text is required" }
+        val body =
+            buildJsonObject {
+                put("table", table)
+                put("embedding_column", embeddingColumn)
+                put("text", text)
+                if (k != null) put("k", k)
+                if (deadlineMs != null) put("deadline_ms", deadlineMs)
+                if (maxWork != null) put("max_work", maxWork)
+            }.toString()
+        transport.postBody("/kit/retrieve_text", body)
+    }
+
+    /**
+     * Retained SQL status for durable recovery (GET /queries/{query_id}).
+     * Returns the raw JSON response body.
+     */
+    fun queryStatus(queryId: String): String = runBlocking {
+        require(queryId.isNotEmpty()) { "query_id is required" }
+        transport.getBody("/queries/${urlEncode(queryId)}")
+    }
+
+    /**
+     * Request cancellation of a running SQL query
+     * (POST /queries/{query_id}/cancel).
+     */
+    fun cancelQuery(queryId: String): String = runBlocking {
+        require(queryId.isNotEmpty()) { "query_id is required" }
+        transport.postBody("/queries/${urlEncode(queryId)}/cancel", "{}")
+    }
+
+    /**
      * Execute a SQL statement via the /sql endpoint. Returns the raw response
      * body (JSON for SELECT, status text for DDL/DML).
      *
