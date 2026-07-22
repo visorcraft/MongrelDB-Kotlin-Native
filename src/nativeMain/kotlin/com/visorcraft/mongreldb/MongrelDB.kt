@@ -232,11 +232,12 @@ class MongrelDB(
 
     /**
      * Retained SQL status for durable recovery (GET /queries/{query_id}).
-     * Returns the raw JSON response body.
+     * Returns a structural [QueryStatus] with HLC / serialization accessors.
      */
-    fun queryStatus(queryId: String): String = runBlocking {
+    fun queryStatus(queryId: String): QueryStatus = runBlocking {
         require(queryId.isNotEmpty()) { "query_id is required" }
-        transport.getBody("/queries/${urlEncode(queryId)}")
+        val body = transport.getBody("/queries/${urlEncode(queryId)}")
+        QueryStatus.fromJsonString(body)
     }
 
     /**
